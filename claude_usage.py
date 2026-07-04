@@ -24,7 +24,7 @@ CLAUDE_ORANGE = NSColor.colorWithRed_green_blue_alpha_(0.851, 0.471, 0.341, 1.0)
 CLAUDE_GLYPH = "✻"
 
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
-REFRESH_SECONDS = 60
+REFRESH_SECONDS = 300
 KEYCHAIN_SERVICE = "Claude Code-credentials"
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 CONTEXT_WINDOW_LIMIT = 200_000
@@ -151,7 +151,7 @@ def bar_html(pct):
     return f'<div class="track"><div class="fill" style="width:{pct}%"></div></div>'
 
 
-def render_html(account, totals, active):
+def render_html(account, totals, active, stale=False):
     sections = ""
     if account and account.get("five_hour"):
         fh = account["five_hour"]
@@ -184,6 +184,7 @@ def render_html(account, totals, active):
         <div class="row"><span>Context window</span><span>{pct:.0f}%</span></div>"""
 
     now = datetime.now().strftime("%H:%M:%S")
+    updated_label = f"Updated {now}" + (" (stale — API rate limited)" if stale else "")
 
     return f"""
 <!doctype html><html><head><meta charset="utf-8"><style>
@@ -213,7 +214,7 @@ def render_html(account, totals, active):
     {sections}
     {extra_rows}
     <div class="footer">
-      <span>Updated {now}</span>
+      <span>{updated_label}</span>
       <span><a onclick="window.webkit.messageHandlers.bridge.postMessage('refresh')">Refresh</a> &nbsp;·&nbsp; <a onclick="window.webkit.messageHandlers.bridge.postMessage('quit')">Quit</a></span>
     </div>
   </div>
@@ -259,6 +260,7 @@ class AppDelegate(NSObject):
         self.popover.setBehavior_(1)  # NSPopoverBehaviorTransient
         self.popover.setContentViewController_(controller)
 
+        self.last_account = None
         self.refresh()
         NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
             REFRESH_SECONDS, self, "timerRefresh:", None, True
@@ -270,7 +272,10 @@ class AppDelegate(NSObject):
     def refresh(self):
         totals = scan_usage()
         active = scan_active_session()
-        account = fetch_account_usage()
+        fetched = fetch_account_usage()
+        if fetched:
+            self.last_account = fetched
+        account = self.last_account
 
         total_tokens = sum(totals.values())
         title_parts = [fmt_tokens(total_tokens)]
@@ -284,7 +289,7 @@ class AppDelegate(NSObject):
         attributed.addAttribute_value_range_(NSForegroundColorAttributeName, CLAUDE_ORANGE, (0, 1))
         self.status_item.button().setAttributedTitle_(attributed)
 
-        html = render_html(account, totals, active)
+        html = render_html(account, totals, active, stale=(fetched is None and account is not None))
         self.webview.loadHTMLString_baseURL_(html, None)
 
     def togglePopover_(self, sender):
