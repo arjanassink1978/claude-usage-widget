@@ -186,8 +186,8 @@ public class TrayApp {
         double clamped = Math.max(0, Math.min(100, pct));
         Color color = clamped <= 0 ? IDLE_COLOR : ACTIVE_COLOR;
 
-        int strokeWidth = size / 11;
-        int margin = strokeWidth;
+        int strokeWidth = size / 8;
+        int margin = strokeWidth / 2;
         Ellipse2D.Double bounds = new Ellipse2D.Double(margin, margin, size - 2.0 * margin, size - 2.0 * margin);
 
         g.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -202,7 +202,7 @@ public class TrayApp {
         }
 
         g.setColor(color);
-        Font font = new Font("SansSerif", Font.BOLD, (int) (size * 0.46));
+        Font font = new Font("SansSerif", Font.BOLD, (int) (size * 0.55));
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
         String letter = "C";

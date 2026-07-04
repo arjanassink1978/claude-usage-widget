@@ -235,35 +235,39 @@ public class UsageCore {
 <!doctype html><html><head><meta charset="utf-8"><style>
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 18px; background: #1c1c1e; color: #fff;
+    margin: 0; padding: 16px; background: #000; color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Text", sans-serif;
     -webkit-user-select: none; user-select: none;
   }
-  .card { background: #2c2c2e; border-radius: 16px; padding: 20px; }
-  .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
-  .header .title { font-size: 18px; font-weight: 700; }
+  .header { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 4px 12px; }
+  .header .title { font-size: 17px; font-weight: 700; }
   .header .plan { font-size: 13px; color: #9a9a9e; margin-left: 8px; }
-  .metric { margin-bottom: 20px; }
-  .metric-label { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
-  .track { height: 8px; border-radius: 4px; background: #48484a; overflow: hidden; }
+  .header .glyph { font-size: 18px; color: #DA7857; }
+  .card { background: #2c2c2e; border-radius: 16px; padding: 18px; }
+  .metric { margin-bottom: 18px; }
+  .metric-label { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .track { height: 8px; border-radius: 4px; background: #545456; overflow: hidden; }
   .fill { height: 100%%; background: #0a84ff; border-radius: 4px; }
-  .metric-row { display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px; color: #d0d0d2; }
+  .metric-row { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; color: #c7c7c9; }
   .muted { color: #8e8e93; }
-  .row { display: flex; justify-content: space-between; font-size: 15px; padding: 8px 0; border-top: 1px solid #3a3a3c; }
-  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 12px; color: #8e8e93; }
+  .row { display: flex; justify-content: space-between; font-size: 14px; padding: 7px 0; }
+  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 0 4px; font-size: 12px; color: #8e8e93; }
   .footer a { color: #0a84ff; text-decoration: none; cursor: pointer; }
 </style>
 <script>%s</script>
 </head>
 <body>
+  <div class="header">
+    <span><span class="title">Claude</span><span class="plan">Code CLI</span></span>
+    <span class="glyph">✻</span>
+  </div>
   <div class="card">
-    <div class="header"><span><span class="title" style="color:#DA7857">✻</span> <span class="title">Claude</span><span class="plan">Code CLI</span></span></div>
     %s
     %s
-    <div class="footer">
-      <span>%s</span>
-      <span><a onclick="bridge('refresh')">Refresh</a> &nbsp;·&nbsp; <a onclick="bridge('quit')">Quit</a></span>
-    </div>
+  </div>
+  <div class="footer">
+    <span>%s</span>
+    <span><a onclick="bridge('refresh')">Refresh</a> &nbsp;·&nbsp; <a onclick="bridge('quit')">Quit</a></span>
   </div>
 </body></html>
 """, bridgeScript, sections, extraRows, updatedLabel);
