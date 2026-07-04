@@ -11,8 +11,6 @@ import netscape.javascript.JSObject;
 import java.awt.AWTException;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.MenuItem;
-import java.awt.PopupMenu;
 import java.awt.RenderingHints;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
@@ -95,24 +93,10 @@ public class TrayApp {
 
     private static void setupTray() throws AWTException {
         Image icon = makeIconImage();
-        PopupMenu menu = new PopupMenu();
-
-        MenuItem open = new MenuItem("Open");
-        open.addActionListener(e -> Platform.runLater(TrayApp::toggleStage));
-        menu.add(open);
-
-        MenuItem refreshItem = new MenuItem("Refresh");
-        refreshItem.addActionListener(e -> new Thread(TrayApp::refresh).start());
-        menu.add(refreshItem);
-
-        MenuItem quit = new MenuItem("Quit");
-        quit.addActionListener(e -> {
-            Platform.exit();
-            System.exit(0);
-        });
-        menu.add(quit);
-
-        trayIcon = new TrayIcon(icon, "Claude usage", menu);
+        // No PopupMenu here on purpose: java.awt.TrayIcon shows an attached PopupMenu on the
+        // same single click on macOS, which would swallow the click before this actionListener
+        // toggles the window (Refresh/Quit already live in the popover's own footer links).
+        trayIcon = new TrayIcon(icon, "Claude usage");
         trayIcon.setImageAutoSize(true);
         trayIcon.addActionListener(e -> Platform.runLater(TrayApp::toggleStage));
         SystemTray.getSystemTray().add(trayIcon);
