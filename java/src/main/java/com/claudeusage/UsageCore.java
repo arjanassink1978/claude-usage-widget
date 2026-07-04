@@ -235,7 +235,7 @@ public class UsageCore {
 <!doctype html><html><head><meta charset="utf-8"><style>
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 16px; background: #000; color: #fff;
+    margin: 0; padding: 16px; background: #2c2c2e; color: #fff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Text", sans-serif;
     -webkit-user-select: none; user-select: none;
   }
