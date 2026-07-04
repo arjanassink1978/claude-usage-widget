@@ -14,6 +14,8 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.function.Supplier;
 
@@ -98,7 +100,14 @@ public class TrayApp {
         // toggles the window (Refresh/Quit already live in the popover's own footer links).
         trayIcon = new TrayIcon(icon, "Claude usage");
         trayIcon.setImageAutoSize(true);
-        trayIcon.addActionListener(e -> Platform.runLater(TrayApp::toggleStage));
+        // actionListener's click firing is unreliable on macOS AWT (long-standing JDK bug);
+        // MouseListener.mouseClicked is the reliable cross-platform way to detect a tray click.
+        trayIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Platform.runLater(TrayApp::toggleStage);
+            }
+        });
         SystemTray.getSystemTray().add(trayIcon);
     }
 
