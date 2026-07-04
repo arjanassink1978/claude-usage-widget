@@ -9,6 +9,10 @@ import javafx.stage.StageStyle;
 import netscape.javascript.JSObject;
 
 import java.awt.AWTException;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
@@ -16,6 +20,8 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.util.function.Supplier;
 
@@ -94,7 +100,7 @@ public class TrayApp {
     }
 
     private static void setupTray() throws AWTException {
-        Image icon = makeIconImage();
+        Image icon = makeIconImage(0);
         // No PopupMenu here on purpose: java.awt.TrayIcon shows an attached PopupMenu on the
         // same single click on macOS, which would swallow the click before this actionListener
         // toggles the window (Refresh/Quit already live in the popover's own footer links).
@@ -105,19 +111,29 @@ public class TrayApp {
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                Platform.runLater(TrayApp::toggleStage);
+                double x = e.getXOnScreen();
+                double y = e.getYOnScreen();
+                Platform.runLater(() -> toggleStageAt(x, y));
             }
         });
         SystemTray.getSystemTray().add(trayIcon);
     }
 
-    private static void toggleStage() {
+    /** Anchors the popover under (macOS menu bar) or above (Windows taskbar) the clicked icon. */
+    private static void toggleStageAt(double clickX, double clickY) {
         if (stage.isShowing()) {
             stage.hide();
-        } else {
-            stage.show();
-            stage.toFront();
+            return;
         }
+        boolean macOS = System.getProperty("os.name", "").toLowerCase().contains("mac");
+        double w = stage.getWidth() > 0 ? stage.getWidth() : 400;
+        double h = stage.getHeight() > 0 ? stage.getHeight() : 440;
+        double x = clickX - w / 2;
+        double y = macOS ? clickY + 8 : clickY - h - 8;
+        stage.setX(x);
+        stage.setY(y);
+        stage.show();
+        stage.toFront();
     }
 
     private static void refresh() {
@@ -137,7 +153,15 @@ public class TrayApp {
                 tooltip.append(String.format(" · Weekly %.0f%%", account.sevenDay().utilization()));
             }
         }
-        if (trayIcon != null) trayIcon.setToolTip(tooltip.toString());
+        if (trayIcon != null) {
+            trayIcon.setToolTip(tooltip.toString());
+            double pct = 0;
+            if (account != null) {
+                if (account.fiveHour() != null) pct = Math.max(pct, account.fiveHour().utilization());
+                if (account.sevenDay() != null) pct = Math.max(pct, account.sevenDay().utilization());
+            }
+            trayIcon.setImage(makeIconImage(pct));
+        }
 
         String html = UsageCore.renderHtml(account, totals, active, stale, BRIDGE_JS);
         if (stage != null && stage.getScene() != null) {
@@ -148,20 +172,44 @@ public class TrayApp {
         }
     }
 
-    private static Image makeIconImage() {
-        int size = 32;
+    private static final Color RING_TRACK = new Color(120, 120, 120, 90);
+    private static final Color IDLE_COLOR = new Color(150, 150, 150);
+    private static final Color ACTIVE_COLOR = new Color(224, 122, 63);
+
+    /** Draws a "C" logo with a circular progress ring around it, filled clockwise from the top by pct. */
+    private static Image makeIconImage(double pct) {
+        int size = 128;
         BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setColor(new java.awt.Color(218, 120, 87));
-        g.setStroke(new java.awt.BasicStroke(4, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
-        int cx = size / 2, cy = size / 2, r = size / 2 - 3;
-        for (int i = 0; i < 6; i++) {
-            double angle = Math.PI * i / 3;
-            int x = (int) (cx + r * Math.cos(angle));
-            int y = (int) (cy + r * Math.sin(angle));
-            g.drawLine(cx, cy, x, y);
+
+        double clamped = Math.max(0, Math.min(100, pct));
+        Color color = clamped <= 0 ? IDLE_COLOR : ACTIVE_COLOR;
+
+        int strokeWidth = size / 11;
+        int margin = strokeWidth;
+        Ellipse2D.Double bounds = new Ellipse2D.Double(margin, margin, size - 2.0 * margin, size - 2.0 * margin);
+
+        g.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(RING_TRACK);
+        g.draw(bounds);
+
+        if (clamped > 0) {
+            g.setColor(color);
+            double sweep = clamped / 100.0 * 360.0;
+            Arc2D.Double arc = new Arc2D.Double(bounds.getBounds2D(), 90, -sweep, Arc2D.OPEN);
+            g.draw(arc);
         }
+
+        g.setColor(color);
+        Font font = new Font("SansSerif", Font.BOLD, (int) (size * 0.46));
+        g.setFont(font);
+        FontMetrics fm = g.getFontMetrics();
+        String letter = "C";
+        int tx = (size - fm.stringWidth(letter)) / 2;
+        int ty = (size - fm.getHeight()) / 2 + fm.getAscent();
+        g.drawString(letter, tx, ty);
+
         g.dispose();
         return img;
     }
