@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+mac/build/
+mac/dist/
+windows/build/
+windows/dist/
+*.spec

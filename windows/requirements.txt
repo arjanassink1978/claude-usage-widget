@@ -1,0 +1,6 @@
+pystray
+pywebview
+keyring
+Pillow
+certifi
+pyinstaller

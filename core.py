@@ -1,47 +1,22 @@
-#!/usr/bin/env python3
-"""Menu bar widget: Claude usage tracker, styled after robinebers/openusage."""
+"""Platform-agnostic Claude usage logic: local token scanning, account usage API, popover HTML."""
 import glob
 import json
 import os
 import ssl
-import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
 import certifi
-import objc
-from AppKit import (
-    NSApplication, NSApp, NSStatusBar, NSPopover, NSViewController, NSView,
-    NSMakeRect, NSApplicationActivationPolicyAccessory, NSFont, NSColor,
-    NSMutableAttributedString, NSAttributedString, NSFontAttributeName,
-    NSForegroundColorAttributeName,
-)
-from Foundation import NSObject, NSTimer, NSMakeSize
-from WebKit import WKWebView, WKWebViewConfiguration, WKUserContentController
-
-CLAUDE_ORANGE = NSColor.colorWithRed_green_blue_alpha_(0.851, 0.471, 0.341, 1.0)  # #DA7857
-CLAUDE_GLYPH = "✻"
 
 PROJECTS_DIR = os.path.expanduser("~/.claude/projects")
-REFRESH_SECONDS = 300
-KEYCHAIN_SERVICE = "Claude Code-credentials"
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 CONTEXT_WINDOW_LIMIT = 200_000
+REFRESH_SECONDS = 300
 
 
-def get_access_token():
-    try:
-        raw = subprocess.check_output(
-            ["/usr/bin/security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
-            stderr=subprocess.DEVNULL,
-        ).decode()
-        return json.loads(raw)["claudeAiOauth"]["accessToken"]
-    except (subprocess.CalledProcessError, KeyError, json.JSONDecodeError):
-        return None
-
-
-def fetch_account_usage():
+def fetch_account_usage(get_access_token):
+    """get_access_token: platform-specific callable returning the Claude Code OAuth token or None."""
     token = get_access_token()
     if not token:
         return None
@@ -151,7 +126,7 @@ def bar_html(pct):
     return f'<div class="track"><div class="fill" style="width:{pct}%"></div></div>'
 
 
-def render_html(account, totals, active, stale=False):
+def render_html(account, totals, active, stale=False, bridge_script="function bridge(msg){window.webkit.messageHandlers.bridge.postMessage(msg);}"):
     sections = ""
     if account and account.get("five_hour"):
         fh = account["five_hour"]
@@ -191,23 +166,25 @@ def render_html(account, totals, active, stale=False):
   * {{ box-sizing: border-box; }}
   body {{
     margin: 0; padding: 18px; background: #1c1c1e; color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Text", sans-serif;
+    -webkit-user-select: none; user-select: none;
   }}
-  .card {{ background: #2c2c2e; border-radius: 14px; padding: 16px; }}
+  .card {{ background: #2c2c2e; border-radius: 16px; padding: 20px; }}
   .header {{ display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }}
-  .header .title {{ font-size: 15px; font-weight: 700; }}
-  .header .plan {{ font-size: 12px; color: #9a9a9e; margin-left: 6px; }}
-  .metric {{ margin-bottom: 16px; }}
-  .metric-label {{ font-size: 13px; font-weight: 600; margin-bottom: 8px; }}
-  .track {{ height: 6px; border-radius: 3px; background: #48484a; overflow: hidden; }}
-  .fill {{ height: 100%; background: #0a84ff; border-radius: 3px; }}
-  .metric-row {{ display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #d0d0d2; }}
+  .header .title {{ font-size: 18px; font-weight: 700; }}
+  .header .plan {{ font-size: 13px; color: #9a9a9e; margin-left: 8px; }}
+  .metric {{ margin-bottom: 20px; }}
+  .metric-label {{ font-size: 15px; font-weight: 600; margin-bottom: 10px; }}
+  .track {{ height: 8px; border-radius: 4px; background: #48484a; overflow: hidden; }}
+  .fill {{ height: 100%; background: #0a84ff; border-radius: 4px; }}
+  .metric-row {{ display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px; color: #d0d0d2; }}
   .muted {{ color: #8e8e93; }}
-  .row {{ display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-top: 1px solid #3a3a3c; }}
-  .footer {{ display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 11px; color: #8e8e93; }}
+  .row {{ display: flex; justify-content: space-between; font-size: 15px; padding: 8px 0; border-top: 1px solid #3a3a3c; }}
+  .footer {{ display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 12px; color: #8e8e93; }}
   .footer a {{ color: #0a84ff; text-decoration: none; cursor: pointer; }}
-</style></head>
+</style>
+<script>{bridge_script}</script>
+</head>
 <body>
   <div class="card">
     <div class="header"><span><span class="title" style="color:#DA7857">✻</span> <span class="title">Claude</span><span class="plan">Code CLI</span></span></div>
@@ -215,95 +192,8 @@ def render_html(account, totals, active, stale=False):
     {extra_rows}
     <div class="footer">
       <span>{updated_label}</span>
-      <span><a onclick="window.webkit.messageHandlers.bridge.postMessage('refresh')">Refresh</a> &nbsp;·&nbsp; <a onclick="window.webkit.messageHandlers.bridge.postMessage('quit')">Quit</a></span>
+      <span><a onclick="bridge('refresh')">Refresh</a> &nbsp;·&nbsp; <a onclick="bridge('quit')">Quit</a></span>
     </div>
   </div>
 </body></html>
 """
-
-
-class ScriptMessageHandler(NSObject):
-    def initWithApp_(self, app):
-        self = objc.super(ScriptMessageHandler, self).init()
-        self.app = app
-        return self
-
-    def userContentController_didReceiveScriptMessage_(self, controller, message):
-        body = message.body()
-        if body == "refresh":
-            self.app.refresh()
-        elif body == "quit":
-            NSApp.terminate_(None)
-
-
-class AppDelegate(NSObject):
-    def applicationDidFinishLaunching_(self, notification):
-        self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(-1)
-        self.status_item.button().setTitle_(f"{CLAUDE_GLYPH} …")
-        self.status_item.button().setAction_("togglePopover:")
-        self.status_item.button().setTarget_(self)
-
-        controller = NSViewController.alloc().init()
-        config = WKWebViewConfiguration.alloc().init()
-        self.handler = ScriptMessageHandler.alloc().initWithApp_(self)
-        content_controller = WKUserContentController.alloc().init()
-        content_controller.addScriptMessageHandler_name_(self.handler, "bridge")
-        config.setUserContentController_(content_controller)
-
-        self.webview = WKWebView.alloc().initWithFrame_configuration_(
-            NSMakeRect(0, 0, 400, 420), config
-        )
-        controller.setView_(self.webview)
-
-        self.popover = NSPopover.alloc().init()
-        self.popover.setContentSize_(NSMakeSize(400, 420))
-        self.popover.setBehavior_(1)  # NSPopoverBehaviorTransient
-        self.popover.setContentViewController_(controller)
-
-        self.last_account = None
-        self.refresh()
-        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
-            REFRESH_SECONDS, self, "timerRefresh:", None, True
-        )
-
-    def timerRefresh_(self, timer):
-        self.refresh()
-
-    def refresh(self):
-        totals = scan_usage()
-        active = scan_active_session()
-        fetched = fetch_account_usage()
-        if fetched:
-            self.last_account = fetched
-        account = self.last_account
-
-        total_tokens = sum(totals.values())
-        title_parts = [fmt_tokens(total_tokens)]
-        if account and account.get("five_hour"):
-            title_parts.append(f"S {account['five_hour']['utilization']:.0f}%")
-        if account and account.get("seven_day"):
-            title_parts.append(f"W {account['seven_day']['utilization']:.0f}%")
-        text = "  ".join(title_parts)
-
-        attributed = NSMutableAttributedString.alloc().initWithString_(f"{CLAUDE_GLYPH} {text}")
-        attributed.addAttribute_value_range_(NSForegroundColorAttributeName, CLAUDE_ORANGE, (0, 1))
-        self.status_item.button().setAttributedTitle_(attributed)
-
-        html = render_html(account, totals, active, stale=(fetched is None and account is not None))
-        self.webview.loadHTMLString_baseURL_(html, None)
-
-    def togglePopover_(self, sender):
-        if self.popover.isShown():
-            self.popover.performClose_(sender)
-        else:
-            self.popover.showRelativeToRect_ofView_preferredEdge_(
-                self.status_item.button().bounds(), self.status_item.button(), 3
-            )
-
-
-if __name__ == "__main__":
-    app = NSApplication.sharedApplication()
-    app.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
-    delegate = AppDelegate.alloc().init()
-    app.setDelegate_(delegate)
-    app.run()
