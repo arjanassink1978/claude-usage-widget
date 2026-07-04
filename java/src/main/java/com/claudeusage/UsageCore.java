@@ -258,7 +258,7 @@ public class UsageCore {
 </head>
 <body>
   <div class="header">
-    <span><span class="title">Claude</span><span class="plan">Code CLI</span></span>
+    <span><span class="title">Claude Code</span><span class="plan">Usage</span></span>
     <span class="glyph">✻</span>
   </div>
   <div class="card">
