@@ -1,7 +1,4 @@
-__pycache__/
-*.pyc
-mac/build/
-mac/dist/
-windows/build/
-windows/dist/
-*.spec
+java/target/
+java/installer/
+*.class
+java/dependency-reduced-pom.xml

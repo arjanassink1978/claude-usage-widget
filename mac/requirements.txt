@@ -1,4 +1,0 @@
-pyobjc-framework-Cocoa
-pyobjc-framework-WebKit
-certifi
-pyinstaller
