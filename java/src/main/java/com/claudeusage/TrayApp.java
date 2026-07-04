@@ -186,8 +186,8 @@ public class TrayApp {
         double clamped = Math.max(0, Math.min(100, pct));
         Color color = clamped <= 0 ? IDLE_COLOR : ACTIVE_COLOR;
 
-        int strokeWidth = size / 8;
-        int margin = strokeWidth / 2;
+        int strokeWidth = size / 7;
+        int margin = strokeWidth / 3;
         Ellipse2D.Double bounds = new Ellipse2D.Double(margin, margin, size - 2.0 * margin, size - 2.0 * margin);
 
         g.setStroke(new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));

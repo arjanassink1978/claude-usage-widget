@@ -247,12 +247,12 @@ public class UsageCore {
   .metric { margin-bottom: 18px; }
   .metric-label { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
   .track { height: 8px; border-radius: 4px; background: #545456; overflow: hidden; }
-  .fill { height: 100%%; background: #0a84ff; border-radius: 4px; }
+  .fill { height: 100%%; background: #DA7857; border-radius: 4px; }
   .metric-row { display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; color: #c7c7c9; }
   .muted { color: #8e8e93; }
   .row { display: flex; justify-content: space-between; font-size: 14px; padding: 7px 0; }
   .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding: 0 4px; font-size: 12px; color: #8e8e93; }
-  .footer a { color: #0a84ff; text-decoration: none; cursor: pointer; }
+  .footer a { color: #DA7857; text-decoration: none; cursor: pointer; }
 </style>
 <script>%s</script>
 </head>
