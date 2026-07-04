@@ -53,7 +53,7 @@ Produces a `.dmg` on macOS or `.exe` on Windows (via `jpackage`; Windows needs t
 
 ## Releases
 
-Push a tag like `v0.1.0` — GitHub Actions builds installers for both platforms and attaches them to a release.
+Push a tag like `v0.3.0` — GitHub Actions builds installers for both platforms and attaches them to a release.
 
 ## Project layout
 
